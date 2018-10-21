@@ -3,9 +3,10 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+const route = require('./routes')
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+const fs = require("fs");
+const login = require("facebook-chat-api");
 
 var app = express();
 
@@ -19,8 +20,26 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
+login({appState: JSON.parse(fs.readFileSync('appstate.json', 'utf8'))}, (err, api) => {
+    if(err) return console.error(err);
+    // Here you can use the api
+    api.listen((err, event) =>{
+      if(err) return console.error(err);
+
+      switch(event.type){
+        case 'message':{
+          console.log(`Received a message: `.green, event.message);
+
+          api.sendMessage('Hello', event.threadID);
+        }
+        default:{
+          console.log(event);
+        }
+      }
+    })
+});
+
+route(app);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

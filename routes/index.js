@@ -1,9 +1,12 @@
-var express = require('express');
-var router = express.Router();
+const fbChatAPI = require('./fbChatAPI')
 
-/* GET home page. */
-router.get('/', function(req, res, next) {
-  res.render('index', { title: 'Express' });
-});
+function route(app){
+  app.get('/', (req, res, next) =>{
+    res.status(200).send('Server is running fined');
+  });
 
-module.exports = router;
+  app.use('/v1/api', fbChatAPI)
+
+}
+
+module.exports = route;
