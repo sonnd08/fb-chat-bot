@@ -1,9 +1,11 @@
-var express = require('express');
-var router = express.Router();
+const fbWebhookRouter = require('./fbWebhookRouter')
 
-/* GET home page. */
-router.get('/', function(req, res, next) {
-  res.render('index', { title: 'Express' });
-});
+function route(app){
+  app.get('/', (req, res, next) =>{
+    res.send("Server is running fine!")
+  })
 
-module.exports = router;
+  app.use('/v1/api/webhook', fbWebhookRouter)
+}
+
+module.exports = route;
