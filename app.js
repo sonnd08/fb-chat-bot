@@ -7,8 +7,15 @@ const route = require('./routes')
 const colors = require('colors');
 const fs = require("fs");
 const login = require("facebook-chat-api");
+const { loadConfigFromDotEnv } = require('./utils/untils');
 
 var app = express();
+
+
+loadConfigFromDotEnv();
+
+const answerSentence = process.env.DEFAULT_ANSWER;
+const answerDelayTime = process.env.ANSWER_DELAY_TIME;
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -31,10 +38,10 @@ login({ appState: JSON.parse(fs.readFileSync('appstate.json', 'utf8')) }, (err, 
     listenEvents: true,
     logLevel: 'silent'
   });
-  
+
   api.listen((err, event) => {
     if (err) return console.error(err);
-    
+
     switch (event.type) {
       case 'message': {
         if (event.isGroup) {
@@ -48,14 +55,12 @@ login({ appState: JSON.parse(fs.readFileSync('appstate.json', 'utf8')) }, (err, 
       case 'typ': {
         console.log(`someone is  typing: `.green, event);
         console.log('typ threadTimeOutMap'.bgBlue, threadTimeOutMap);
-        if(event.isTyping && threadTimeOutMap[event.from]){
+        if (event.isTyping && threadTimeOutMap[event.from]) {
           console.log('clear timer to waiting typing end'.red);
           clearTimeout(threadTimeOutMap[event.from]);
         }
-        else{
-          console.log('1');
-          if (!event.isTyping){
-            console.log('2');
+        else {
+          if (!event.isTyping) {
             sendMessageDebounce(api, event.from);
           }
         }
@@ -89,24 +94,17 @@ app.use(function (err, req, res, next) {
 module.exports = app;
 
 
-function sendMessageDebounce(api, threadID) {
+function sendMessageDebounce(fbAPI, threadID) {
   if (threadTimeOutMap[threadID]) {
     clearTimeout(threadTimeOutMap[threadID]);
     console.log('cleared old timer for thread '.bgYellow, threadID);
   }
-  else{
-    threadTimeOutMap[threadID] = {
-      timer: null,
-      // delayTimer: null,
-    }
-  }
 
-  timeOut = setTimeout(() => {
-    api.sendMessage('Hiện tại mình không thể kiểm tra tin nhắn, vui lòng gọi điện trực tiếp nếu cần liên hệ gấp :)\n\n Đây là tin nhắn tự động', threadID);
+  answerTimer = setTimeout(() => {
+    fbAPI.sendMessage(answerSentence, threadID);
     clearTimeout(threadTimeOutMap[threadID]);
     delete threadTimeOutMap[threadID];
-  }, 6000)
+  }, answerDelayTime)
 
-
-  threadTimeOutMap[threadID] = timeOut
+  threadTimeOutMap[threadID] = answerTimer
 }
