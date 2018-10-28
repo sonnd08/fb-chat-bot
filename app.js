@@ -18,6 +18,7 @@ loadConfigFromDotEnv();
 const answerSentence = process.env.DEFAULT_ANSWER;
 const answerDelayTime = process.env.ANSWER_DELAY_TIME;
 const answerLockTime = process.env.ANSWER_LOCK_TIME;
+const answerLockTimeShort = process.env.ANSWER_LOCK_TIME_SHORT;
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -61,14 +62,16 @@ login({ appState: JSON.parse(fs.readFileSync('appstate.json', 'utf8')) }, (err, 
         }
         //handle self event
         if(event.senderID === myID){
-          console.log('received a message from my seft'.bgRed);
+          console.log('received a message from my self'.bgRed);
           if(botChatted[event.threadID]){
             console.log('Skip this message because it have just send by bot'.bgRed);
             delete(botChatted[event.threadID]);
             return;
           }
 
-          destroyAnswerTimerAndRemoveLock(event.threadID)
+          destroyAnswerTimerAndRemoveLock(event.threadID);
+          // we lock auto answer for a short time cause we don't need bot involve after your friend chated
+          lockAutoAnswer(event.threadID, answerLockTimeShort);
           return;
         }
 
@@ -133,7 +136,7 @@ function sendMessageDebounce(fbAPI, threadID) {
     removeAnswerTimer(threadID);
 
     // After bot answer back Prevent answer for 4 hour(ANSWER LOCK)
-    lockAutoAnswer(threadID);
+    lockAutoAnswer(threadID, answerLockTime);
 
     botChatted[threadID] = true;
 
@@ -142,13 +145,15 @@ function sendMessageDebounce(fbAPI, threadID) {
   threadTimeOutMap[threadID] = answerTimer
 }
 
-function lockAutoAnswer(threadID){
+// update or create new auto answer lock
+function lockAutoAnswer(threadID, time){
   // set answerLocker[threadID] to truthy and remove it after a period of time
   console.log('Locked answer for thread '.yellow, threadID);
+  clearTimeout(answerLocker[threadID]);
   answerLocker[threadID] = setTimeout(()=>{
     console.log('Unlocked answer for thread '.yellow, threadID);
     delete(answerLocker[threadID]);
-  }, answerLockTime);
+  }, time);
 }
 
 //If I answer back or seen => destroy “ANSWER TIMER” (don’t need bot answer anymore) and remove “ANSWER LOCK” for that thread (the bot can be listen and answer back if user not answer in time)

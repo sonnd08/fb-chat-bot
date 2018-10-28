@@ -16,6 +16,12 @@ loadConfigFromDotEnv = () => {
     console.error(`Can't load ANSWER_LOCK_TIME!~`);
     process.exit();
   }
+
+  if (!process.env.ANSWER_LOCK_TIME_SHORT) {
+    console.error(`Can't load ANSWER_LOCK_TIME_SHORT!~`);
+    process.exit();
+  }
+
   console.log('Configs loaded!'.green);
 }
 
