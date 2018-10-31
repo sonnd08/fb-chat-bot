@@ -8,7 +8,7 @@ const colors = require('colors');
 const fs = require("fs");
 const login = require("facebook-chat-api");
 const { loadConfigFromDotEnv } = require('./utils/untils');
-
+const moment = require('moment');
 
 var app = express();
 
@@ -37,7 +37,7 @@ let botChatted = {}
 
 login({ appState: JSON.parse(fs.readFileSync('appstate.json', 'utf8')) }, (err, api) => {
   if (err) return console.error(err);
-  
+
   const myID = getMyIDFromCookie();
   if (!myID) {
     console.error('Failed to load my id!'.bgRed);
@@ -50,10 +50,11 @@ login({ appState: JSON.parse(fs.readFileSync('appstate.json', 'utf8')) }, (err, 
     logLevel: 'silent',
     selfListen: true,
   });
-  
+
 
   api.listen((err, event) => {
     if (err) return console.error(err);
+    const logTime = moment(Date.now() + 25200000).format('dddd HH:mm:ss | MMMM Do YYYY');
 
     switch (event.type) {
       case 'message': {
@@ -61,11 +62,12 @@ login({ appState: JSON.parse(fs.readFileSync('appstate.json', 'utf8')) }, (err, 
           return;
         }
         //handle self event
-        if(event.senderID === myID){
-          console.log('received a message from my self'.bgRed);
-          if(botChatted[event.threadID]){
+        if (event.senderID === myID) {
+          console.log('\n', (logTime + '').green);
+          console.log('Received a message from my self'.bgRed);
+          if (botChatted[event.threadID]) {
             console.log('Skip this message because it have just send by bot'.bgRed);
-            delete(botChatted[event.threadID]);
+            delete (botChatted[event.threadID]);
             return;
           }
 
@@ -75,16 +77,19 @@ login({ appState: JSON.parse(fs.readFileSync('appstate.json', 'utf8')) }, (err, 
           return;
         }
 
-        if(answerLocker[event.threadID]){
-          console.log('This thread is being locked auto answer');
+        if (answerLocker[event.threadID]) {
+          console.log('\n', (logTime + '').green);
+          console.log('This thread is being locked auto answer: '.red, event.threadI);
           return;
         }
+        console.log('\n', logTime);
         console.log(`Received a message: `.green, event);
         console.log('message threadTimeOutMap'.bgBlue, threadTimeOutMap);
         sendMessageDebounce(api, event.threadID);
         break;
       }
       case 'typ': {// Can not handle my typing event
+        console.log('\n', (logTime + '').green);
         console.log(`someone is  typing: `.green, event);
         console.log('typ threadTimeOutMap'.bgBlue, threadTimeOutMap);
         if (event.isTyping && threadTimeOutMap[event.from]) {
@@ -127,12 +132,16 @@ module.exports = app;
 
 
 function sendMessageDebounce(fbAPI, threadID) {
+  const logTime = moment(Date.now() + 25200000).format('dddd HH:mm:ss | MMMM Do YYYY');
+  console.log('\n', logTime, '| sendMessageDebounce'.green);
   if (threadTimeOutMap[threadID]) {
+    console.log('removing old timer for thread '.yellow, threadID);
     removeAnswerTimer(threadID);
   }
 
   answerTimer = setTimeout(() => {
     fbAPI.sendMessage(answerSentence, threadID);
+    console.log('RemoveAnswerTimer because bot has sent a message'.yellow);
     removeAnswerTimer(threadID);
 
     // After bot answer back Prevent answer for 4 hour(ANSWER LOCK)
@@ -146,41 +155,43 @@ function sendMessageDebounce(fbAPI, threadID) {
 }
 
 // update or create new auto answer lock
-function lockAutoAnswer(threadID, time){
+function lockAutoAnswer(threadID, time) {
   // set answerLocker[threadID] to truthy and remove it after a period of time
   console.log('Locked answer for thread '.yellow, threadID);
   clearTimeout(answerLocker[threadID]);
-  answerLocker[threadID] = setTimeout(()=>{
+  answerLocker[threadID] = setTimeout(() => {
+    const logTime = moment(Date.now() + 25200000).format('dddd HH:mm:ss | MMMM Do YYYY');
+    console.log('\n', logTime);
     console.log('Unlocked answer for thread '.yellow, threadID);
-    delete(answerLocker[threadID]);
+    delete (answerLocker[threadID]);
   }, time);
 }
 
 //If I answer back or seen => destroy “ANSWER TIMER” (don’t need bot answer anymore) and remove “ANSWER LOCK” for that thread (the bot can be listen and answer back if user not answer in time)
-function destroyAnswerTimerAndRemoveLock(threadID){
+function destroyAnswerTimerAndRemoveLock(threadID) {
   removeAnswerTimer(threadID);
   removeAnswerLock(threadID);
-  
+
 }
 
-function removeAnswerTimer(threadID){
-  if(!threadTimeOutMap[threadID]) return;
+function removeAnswerTimer(threadID) {
+  if (!threadTimeOutMap[threadID]) return;
   console.log('Remove Answer Timer for thread '.yellow, threadID);
   clearTimeout(threadTimeOutMap[threadID]);
   delete threadTimeOutMap[threadID];
 }
-function removeAnswerLock(threadID){
-  if(!answerLocker[threadID]) return;
+function removeAnswerLock(threadID) {
+  if (!answerLocker[threadID]) return;
   console.log('Remove Answer Lock for thread '.yellow, threadID);
   clearTimeout(answerLocker[threadID]);
   delete answerLocker[threadID];
 }
 
-function getMyIDFromCookie(cookiePath = './appstate.json'){
+function getMyIDFromCookie(cookiePath = './appstate.json') {
   const cookieValues = require(cookiePath);
-  
-  c_user = cookieValues.find((element)=>{
-    return element.key==='c_user';
+
+  c_user = cookieValues.find((element) => {
+    return element.key === 'c_user';
   })
 
   return c_user && c_user.value;
